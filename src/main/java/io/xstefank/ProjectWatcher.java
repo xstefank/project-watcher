@@ -9,8 +9,6 @@ import io.xstefank.model.Projects;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.InvalidRemoteException;
-import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -24,7 +22,9 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,8 +39,8 @@ public class ProjectWatcher {
     private Logger logger = Logger.getLogger(ProjectWatcher.class);
     private Projects projects;
 
-    @ConfigProperty(name = "input.file")
-    String filePath;
+    @ConfigProperty(name = "repo.list")
+    String repoList;
 
     @ConfigProperty(name = "github.token")
     String githubToken;
@@ -51,8 +51,20 @@ public class ProjectWatcher {
     @PostConstruct
     public void init() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-        final File inputFile = new File(filePath);
-        projects = objectMapper.readValue(inputFile, Projects.class);
+
+        try {
+            URL repoListURL = new URL(repoList);
+            projects = objectMapper.readValue(repoListURL, Projects.class);
+        } catch (MalformedURLException e) {
+            File repoListFile = new File(repoList);
+            projects = objectMapper.readValue(repoListFile, Projects.class);
+        }
+
+        projects.projects.forEach(project -> {
+            System.out.println(project.upstream);
+            System.out.println(project.downstream);
+            System.out.println(project.branch);
+        });
     }
 
     @Scheduled(every = "1h")
