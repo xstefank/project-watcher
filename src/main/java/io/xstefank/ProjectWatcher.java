@@ -50,6 +50,10 @@ public class ProjectWatcher {
 
     @PostConstruct
     public void init() throws IOException {
+        loadConfig(repoList);
+    }
+
+    public void loadConfig(String repoList) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
 
         try {
@@ -59,12 +63,6 @@ public class ProjectWatcher {
             File repoListFile = new File(repoList);
             projects = objectMapper.readValue(repoListFile, Projects.class);
         }
-
-        projects.projects.forEach(project -> {
-            System.out.println(project.upstream);
-            System.out.println(project.downstream);
-            System.out.println(project.branch);
-        });
     }
 
     @Scheduled(every = "1h")
@@ -74,6 +72,7 @@ public class ProjectWatcher {
             processComponent(project, client, scheduledExecution.getFireTime()));
 
         client.close();
+        logger.info("--------- Check for " + scheduledExecution.getFireTime() + " finished");
     }
 
     private void processComponent(Project project, Client client, Instant fireTime) {
@@ -139,6 +138,14 @@ public class ProjectWatcher {
             } catch (IOException e) {
                 logger.error("Cannot delete tmp directory", e);
             }
+        }
+    }
+
+    public void reloadConfig(String newConfig) throws IOException {
+        if (newConfig != null) {
+            loadConfig(newConfig);
+        } else {
+            loadConfig(repoList);
         }
     }
 }
